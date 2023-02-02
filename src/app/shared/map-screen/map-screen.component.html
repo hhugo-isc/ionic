@@ -1,0 +1,12 @@
+<div *ngIf="!isUserLocationReady; else mapaListo" class="ion-text-center">
+  <ion-spinner></ion-spinner>
+</div>
+
+<ng-template #mapaListo>
+  <app-map-modal
+    [center]="center"
+    [selectable]="selectable"
+    [closeButtonText]="closeButtonText"
+    [title]="title"
+  ></app-map-modal>
+</ng-template>
