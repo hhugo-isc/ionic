@@ -1,7 +1,8 @@
 import { Component, OnDestroy, OnInit } from '@angular/core';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, Route, Router } from '@angular/router';
 import {
   ActionSheetController,
+  AlertController,
   LoadingController,
   ModalController,
   NavController,
@@ -22,15 +23,18 @@ export class PlaceDetailPage implements OnInit, OnDestroy {
   place!: Place;
   isBookable: boolean = false;
   placesSubscription!: Subscription;
+  isLoading = false;
 
   constructor(
     private route: ActivatedRoute,
+    private router: Router,
     private navController: NavController,
-    private placesService: PlacesService,
     private modalController: ModalController,
     private actionSheetController: ActionSheetController,
     private loadingController: LoadingController,
+    private alertController: AlertController,
     private bookingService: BookingService,
+    private placesService: PlacesService,
     private authService: AuthService
   ) {}
 
@@ -40,12 +44,34 @@ export class PlaceDetailPage implements OnInit, OnDestroy {
         this.navController.navigateBack('/places/tabs/offers');
         return;
       }
+      this.isLoading = true;
       this.placesSubscription = this.placesService
         .getPlace(params.get('placeId')!)
-        .subscribe((place) => {
-          this.place = place;
-          this.isBookable = place.userId !== this.authService.userId;
-        });
+        .subscribe(
+          (place) => {
+            this.place = place;
+            this.isBookable = place.userId !== this.authService.userId;
+            this.isLoading = false;
+          },
+          (error) => {
+            this.alertController
+              .create({
+                header: 'An error ocurred!',
+                message: 'Could not fetch place. Try it again later.',
+                buttons: [
+                  {
+                    text: 'okay',
+                    handler: () => {
+                      this.router.navigate(['/places/tabs/discover']);
+                    },
+                  },
+                ],
+              })
+              .then((alertElement) => {
+                alertElement.present();
+              });
+          }
+        );
     });
   }
 
