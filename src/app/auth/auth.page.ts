@@ -1,8 +1,10 @@
 import { Component, OnInit } from '@angular/core';
 import { NgForm } from '@angular/forms';
 import { Router } from '@angular/router';
-import { ActionSheetController, LoadingController } from '@ionic/angular';
-import { AuthService } from './auth.service';
+import { AlertController, LoadingController } from '@ionic/angular';
+
+import { Observable } from 'rxjs';
+import { AuthResponseData, AuthService } from './auth.service';
 
 @Component({
   selector: 'app-auth',
@@ -16,23 +18,58 @@ export class AuthPage implements OnInit {
   constructor(
     private router: Router,
     private authService: AuthService,
-    private loadingController: LoadingController
+    private loadingController: LoadingController,
+    private alertController: AlertController
   ) {}
 
   ngOnInit() {}
 
-  onLogin() {
+  authenticate(email: string, password: string) {
     this.isLoading = true;
-    this.authService.login();
     this.loadingController
       .create({ keyboardClose: true, message: 'Logging in...' })
       .then((loadingEl) => {
         loadingEl.present();
-        setTimeout(() => {
-          this.isLoading = false;
-          loadingEl.dismiss();
-          this.router.navigateByUrl('/places/tabs/discover');
-        }, 1500);
+
+        let request: Observable<AuthResponseData>;
+        if (this.isLogin) {
+          request = this.authService.login(email, password);
+        } else {
+          request = this.authService.signup(email, password);
+        }
+
+        request.subscribe(
+          (response) => {
+            loadingEl.dismiss();
+            this.isLoading = false;
+            this.router.navigateByUrl('/places/tabs/discover');
+          },
+          (errorResponse) => {
+            loadingEl.dismiss();
+            const code = errorResponse.error.error.message;
+            let message = 'Could not sign you up, please try again.';
+            if (code === 'EMAIL_EXISTS') {
+              message = 'This email address alteady exits';
+            } else if (code === 'EMAIL_NOT_FOUND') {
+              message = 'Email address could not found';
+            } else if (code === 'INVALID_PASSWORD') {
+              message = 'This password is not correct';
+            }
+            this.showAlert(message);
+          }
+        );
+      });
+  }
+
+  showAlert(message: string) {
+    this.alertController
+      .create({
+        header: 'An error ocurred',
+        message: message,
+        buttons: ['okay'],
+      })
+      .then((alertElement) => {
+        alertElement.present();
       });
   }
 
@@ -47,8 +84,7 @@ export class AuthPage implements OnInit {
     const email = form.value.email;
     const password = form.value.password;
 
-    if (this.isLogin) {
-    } else {
-    }
+    this.authenticate(email, password);
+    form.reset();
   }
 }

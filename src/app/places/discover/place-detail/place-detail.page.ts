@@ -7,7 +7,7 @@ import {
   ModalController,
   NavController,
 } from '@ionic/angular';
-import { Subscription } from 'rxjs';
+import { Subscription, switchMap, take } from 'rxjs';
 import { AuthService } from 'src/app/auth/auth.service';
 import { BookingService } from 'src/app/bookings/booking.service';
 import { CreateBookingComponent } from 'src/app/bookings/create-booking/create-booking.component';
@@ -47,12 +47,22 @@ export class PlaceDetailPage implements OnInit, OnDestroy {
         return;
       }
       this.isLoading = true;
-      this.placesSubscription = this.placesService
-        .getPlace(params.get('placeId')!)
+      let fetchedUserId: string = '';
+      this.authService.userId
+        .pipe(
+          take(1),
+          switchMap((userId) => {
+            if (!userId) {
+              throw new Error('Found no user!');
+            }
+            fetchedUserId = userId;
+            return this.placesService.getPlace(params.get('placeId')!);
+          })
+        )
         .subscribe(
           (place) => {
             this.place = place;
-            this.isBookable = place.userId !== this.authService.userId;
+            this.isBookable = place.userId !== fetchedUserId;
             this.isLoading = false;
           },
           (error) => {
